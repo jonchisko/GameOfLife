@@ -132,9 +132,11 @@ fn camera_zoom(
 fn cell_interaction(
     
 ) {
-
+    // find world coordinates of camera, fire a "ray" and iterate over all cells to find which one is intersected by the ray
+    // so.... do we need main camera as a resource?
 }
 
 fn simulation_step() {
-
+    // the easy one, just copy the values to some vec and then read from that vec and update cell states
+    // simulation step only runs if resource for simrun is "true" (this will be done via events from the ui)
 }
