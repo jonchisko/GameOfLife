@@ -4,11 +4,30 @@ const NORMAL_BUTTON: Color = Color::rgb(0.8, 0.8, 0.8);
 const HOVERED_BUTTON: Color = Color::rgb(0.4, 0.8, 0.8);
 const PRESSED_BUTTON: Color = Color::rgb(0.4, 1.0, 1.0);
 
+pub struct GameExitEvent;
+
+pub struct SimulationStartEvent;
+
+pub struct SimulationStopEvent;
+
+#[derive(Component)]
+struct ClassicButton(ButtonType);
+
+#[derive(PartialEq, Copy, Clone)]
+enum ButtonType {
+    Start,
+    Stop,
+    Exit,
+}
+
 pub struct MainMenuPlugin;
 
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
         app
+            .add_event::<GameExitEvent>()
+            .add_event::<SimulationStartEvent>()
+            .add_event::<SimulationStopEvent>()
             .add_startup_system(setup)
             .add_system(button_system);
     }
@@ -51,23 +70,26 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                             ..Default::default()
                         })
                         .with_children(|parent| {
-                            parent // QUIT BUTTON
+                            parent // PLAY BUTTON
                                 .spawn_bundle(build_classic_button(&asset_server))
                                 .with_children(|parent| {
                                     parent.spawn_bundle(build_classic_text("PLAY", &asset_server));
-                                });
+                                })
+                                .insert(ClassicButton(ButtonType::Start));
 
-                            parent // QUIT BUTTON
+                            parent // STOP BUTTON
                                 .spawn_bundle(build_classic_button(&asset_server))
                                 .with_children(|parent| {
                                     parent.spawn_bundle(build_classic_text("STOP", &asset_server));
-                                });
+                                })
+                                .insert(ClassicButton(ButtonType::Stop));
 
                             parent // QUIT BUTTON
                                 .spawn_bundle(build_classic_button(&asset_server))
                                 .with_children(|parent| {
                                     parent.spawn_bundle(build_classic_text("QUIT", &asset_server));
-                                });
+                                })
+                                .insert(ClassicButton(ButtonType::Exit));
                         });
                 });
         });
@@ -105,14 +127,27 @@ fn build_classic_text(value: &str, asset_server: &Res<AssetServer>) -> TextBundl
 
 fn button_system(
     mut interaction_query: Query<
-        (&Interaction, &mut UiColor),
-        (Changed<Interaction>, With<Button>),
-    >
+        (&Interaction, &mut UiColor, &ClassicButton),
+        (Changed<Interaction>, With<Button>)>,
+    mut start_writer: EventWriter<SimulationStartEvent>,
+    mut stop_writer: EventWriter<SimulationStopEvent>,
+    mut exit_writer: EventWriter<GameExitEvent>,
 ) {
-    for (interaction, mut color) in interaction_query.iter_mut() {
+    for (interaction, mut color, classic_button) in interaction_query.iter_mut() {
         match *interaction {
             Interaction::Clicked => {
                 *color = PRESSED_BUTTON.into();
+                match classic_button.0 {
+                    ButtonType::Start => {
+                        start_writer.send(SimulationStartEvent);
+                    },
+                    ButtonType::Stop => {
+                        stop_writer.send(SimulationStopEvent);
+                    },
+                    ButtonType::Exit => {
+                        exit_writer.send(GameExitEvent);
+                    }
+                }
             }
             Interaction::Hovered => {
                 *color = HOVERED_BUTTON.into();
